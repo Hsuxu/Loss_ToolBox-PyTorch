@@ -1,0 +1,5 @@
+*.pyc
+/.vscode
+*_test
+*.xml
+smooth_cross_entropy*
