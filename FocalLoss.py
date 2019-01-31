@@ -44,7 +44,6 @@ class FocalLoss(nn.Module):
         # alpha = alpha.scatter_(1, target.long(), self.alpha)
         epsilon = 1e-10
         alpha = self.alpha
-        alpha.requires_grad_ = True
         if alpha.device != input.device:
             alpha = torch.tensor(alpha, device=input.device)
 
@@ -52,7 +51,6 @@ class FocalLoss(nn.Module):
         idx = target.cpu().long()
 
         one_hot_key = torch.FloatTensor(target.size(0), self.num_class).zero_()
-        one_hot_key.requires_grad_ = True
         one_hot_key = one_hot_key.scatter_(1, idx, 1)
         one_hot_key = one_hot_key.to(logit.device)
         if self.smooth:
