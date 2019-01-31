@@ -9,9 +9,16 @@ class FocalLoss(nn.Module):
     This is a implementation of Focal Loss with smooth label cross entropy supported which is proposed in
     'Focal Loss for Dense Object Detection. (https://arxiv.org/abs/1708.02002)'
         Focal_Loss= -1*alpha*(1-pt)*log(pt)
+    :param num_class:
+    :param alpha: (tensor) 3D or 4D the scalar factor for this criterion
+    :param gamma: (float,double) gamma > 0 reduces the relative loss for well-classified examples (p>0.5) putting more
+                    focus on hard misclassified example
+    :param smooth: (float,double) smooth value when cross entropy
+    :param balance_index: (int) balance class index, should be specific when alpha is float
+    :param size_average: (bool, optional) By default, the losses are averaged over each loss element in the batch.
     """
 
-    def __init__(self, num_class, alpha=None, gamma=2, smooth=None, balance_index=-1, size_average=True):
+    def __init__(self, num_class, alpha=None, gamma=2, balance_index=-1, smooth=None,  size_average=True):
         super(FocalLoss, self).__init__()
         self.num_class = num_class
         self.alpha = alpha
@@ -33,9 +40,13 @@ class FocalLoss(nn.Module):
         else:
             raise TypeError('Not support alpha type')
 
+        if self.smooth < 0 or self.smooth > 1.0:
+            raise ValueError('smooth value should be in [0,1]')
+
     def forward(self, input, target):
         if input.dim() > 2:
-            input = input.view(input.size(0), input.size(1), -1)  # N,C,d1,d2 -> N,C,m (m=d1*d2*...)
+            # N,C,d1,d2 -> N,C,m (m=d1*d2*...)
+            input = input.view(input.size(0), input.size(1), -1)
         target = target.view(-1, 1)
 
         # N = input.size(0)
@@ -45,16 +56,19 @@ class FocalLoss(nn.Module):
         epsilon = 1e-10
         alpha = self.alpha
         if alpha.device != input.device:
-            alpha = torch.tensor(alpha, device=input.device)
+            alpha = alpha.to(input.device)
 
         logit = F.softmax(input, dim=-1)
         idx = target.cpu().long()
 
         one_hot_key = torch.FloatTensor(target.size(0), self.num_class).zero_()
         one_hot_key = one_hot_key.scatter_(1, idx, 1)
-        one_hot_key = one_hot_key.to(logit.device)
+        if one_hot_key.device != logit.device:
+            one_hot_key = one_hot_key.to(logit.device)
+
         if self.smooth:
-            one_hot_key = torch.clamp(one_hot_key, self.smooth, 1.0 - self.smooth)
+            one_hot_key = torch.clamp(
+                one_hot_key, self.smooth, 1.0 - self.smooth)
         pt = (one_hot_key * logit).sum(1) + epsilon
         logpt = pt.log()
 
