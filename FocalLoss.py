@@ -18,7 +18,7 @@ class FocalLoss(nn.Module):
     :param size_average: (bool, optional) By default, the losses are averaged over each loss element in the batch.
     """
 
-    def __init__(self, num_class, alpha=None, gamma=2, balance_index=-1, smooth=None,  size_average=True):
+    def __init__(self, num_class, alpha=None, gamma=2, balance_index=-1, smooth=None, size_average=True):
         super(FocalLoss, self).__init__()
         self.num_class = num_class
         self.alpha = alpha
@@ -40,13 +40,18 @@ class FocalLoss(nn.Module):
         else:
             raise TypeError('Not support alpha type')
 
-        if self.smooth < 0 or self.smooth > 1.0:
-            raise ValueError('smooth value should be in [0,1]')
+        if self.smooth is not None:
+            if self.smooth < 0 or self.smooth > 1.0:
+                raise ValueError('smooth value should be in [0,1]')
 
     def forward(self, input, target):
-        if input.dim() > 2:
+        logit = F.softmax(input, dim=1)
+
+        if logit.dim() > 2:
             # N,C,d1,d2 -> N,C,m (m=d1*d2*...)
-            input = input.view(input.size(0), input.size(1), -1)
+            logit = logit.view(logit.size(0), logit.size(1), -1)
+            logit = logit.permute(0, 2, 1).contiguous()
+            logit = logit.view(-1, logit.size(-1))
         target = target.view(-1, 1)
 
         # N = input.size(0)
@@ -58,7 +63,6 @@ class FocalLoss(nn.Module):
         if alpha.device != input.device:
             alpha = alpha.to(input.device)
 
-        logit = F.softmax(input, dim=-1)
         idx = target.cpu().long()
 
         one_hot_key = torch.FloatTensor(target.size(0), self.num_class).zero_()
@@ -83,23 +87,4 @@ class FocalLoss(nn.Module):
             loss = loss.sum()
         return loss
 
-
-def test_focal():
-    num_class = 5
-    # alpha = np.random.randn(num_class)
-    # input = torch.randn(10, num_class).cuda()
-    # target = torch.LongTensor(10).random_(num_class).cuda()
-    # loss0 = FL(input, target)
-    # print(loss0)
-    nodes = 100
-    N = 100
-    m = torch.nn.Linear(nodes, num_class).cuda()
-    FL = FocalLoss(num_class=num_class, alpha=0.25, gamma=2.0, balance_index=2)
-    for i in range(100):
-        input = torch.rand(N, nodes) * torch.randint(1, 100, (N, nodes))
-        input = input.cuda()
-
-        target = torch.LongTensor(N).random_(num_class).cuda()
-        loss0 = FL(m(input), target)
-        print(loss0)
-        loss0.backward()
+    
