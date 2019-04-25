@@ -1,5 +1,5 @@
 # FocalLoss-PyTorch
-PyTorch Implementation of Focal Loss for image segmentation (especiall 3-D image).
+PyTorch Implementation of Focal Loss for image segmentation (especially 3-D image).
 [Focal Loss for Dense Object Detection](https://arxiv.org/abs/1708.02002)
 
 ## Focal Loss
