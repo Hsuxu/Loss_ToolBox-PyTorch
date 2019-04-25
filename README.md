@@ -1,12 +1,9 @@
-# FocalLoss-PyTorch
-PyTorch Implementation of Focal Loss for image segmentation (especially 3-D image).
-[Focal Loss for Dense Object Detection](https://arxiv.org/abs/1708.02002)
+Loss_ToolBox
+---
 
-## Focal Loss
-* [x] Implement Focal Loss for binary classification 
-* [x] Implement Focal Loss for multi-class classification 
-* [x] Add smooth cross entropy support
-* [x] Train on custom dataset (Medical Image Segmentation)
+## Introduction
+This repository include several losses for 3D image segmentation.
+1. [Focal Loss](https://arxiv.org/abs/1708.02002) (PS:Borrow some code from [c0nn3r/RetinaNet](https://github.com/c0nn3r/RetinaNet))
+2. [Lovasz-Softmax Loss](https://arxiv.org/abs/1705.08790)(Modify from orinial implementation [LovaszSoftmax](https://github.com/bermanmaxim/LovaszSoftmax))
+3. [DiceLoss](https://arxiv.org/abs/1606.04797) (To Be Released)
 
-## Note:
-Borrow some code from [c0nn3r/RetinaNet](https://github.com/c0nn3r/RetinaNet)
