@@ -9,6 +9,17 @@ from torch.autograd import Variable
 class BinaryTverskyLoss(Function):
 
     def __init__(ctx, alpha=0.5, beta=0.5, epsilon=1e-6, reduction='mean'):
+        """
+
+        :param alpha: controls the penalty for false positives.
+        :param beta: penalty for false negative.
+        :param epsilon:
+        :param reduction: return mode
+        Notes:
+        alpha = beta = 0.5 => dice coeff
+        alpha = beta = 1 => tanimoto coeff
+        alpha + beta = 1 => F beta coeff
+        """
         ctx.alpha = alpha
         ctx.beta = beta
         ctx.epsilon = epsilon
@@ -37,6 +48,8 @@ class BinaryTverskyLoss(Function):
 
         index = ctx.P_G / (ctx.P_G + ctx.alpha * ctx.P_NG + ctx.beta * ctx.NP_G + ctx.epsilon)
         loss = 1 - index
+        # target_area = torch.sum(target_label, 1)
+        # loss[target_area == 0] = 0
         if ctx.reduction == 'none':
             loss = loss
         elif ctx.reduction == 'sum':
@@ -55,6 +68,8 @@ class BinaryTverskyLoss(Function):
         (d_loss/d_p0)=
         """
         inputs, target = ctx.saved_tensors
+        inputs = inputs.float()
+        target = target.float()
         batch_size = inputs.size(0)
         sum = ctx.P_G + ctx.alpha * ctx.P_NG + ctx.beta * ctx.NP_G
         P_G = ctx.P_G.view(batch_size, 1, 1, 1, 1)
@@ -64,9 +79,8 @@ class BinaryTverskyLoss(Function):
             sum = sum.view(batch_size, 1, 1, 1)
             P_G = ctx.P_G.view(batch_size, 1, 1, 1)
         sub = (ctx.alpha * (1 - target) + target) * P_G
-        num = sum * target - sub
-        dL_dp0 = -2 * num / sum / sum
+        dL_dp0 = -2 * (target / sum - sub / sum / sum)
         dL_dp1 = ctx.beta * (1 - target) * P_G / sum / sum
         grad_input = torch.cat((dL_dp1, dL_dp0), dim=1)
-        # grad_input = torch.cat((-grad_out.item() * grad_input, grad_input * grad_out.item()), dim=1)
+        # grad_input = torch.cat((grad_out.item() * dL_dp0, dL_dp0 * grad_out.item()), dim=1)
         return grad_input, None
