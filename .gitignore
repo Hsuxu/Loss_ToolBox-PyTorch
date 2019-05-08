@@ -6,7 +6,7 @@ DiceLoss/
 __pycache__/
 *.py[cod]
 *$py.class
-
+Data/
 # C extensions
 *.so
 
