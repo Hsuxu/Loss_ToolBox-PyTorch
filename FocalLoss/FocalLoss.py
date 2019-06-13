@@ -44,8 +44,9 @@ class FocalLoss(nn.Module):
             if self.smooth < 0 or self.smooth > 1.0:
                 raise ValueError('smooth value should be in [0,1]')
 
-    def forward(self, input, target):
-        logit = F.softmax(input, dim=1)
+    def forward(self, logit, target):
+              
+        # logit = F.softmax(input, dim=1)
 
         if logit.dim() > 2:
             # N,C,d1,d2 -> N,C,m (m=d1*d2*...)
@@ -72,7 +73,7 @@ class FocalLoss(nn.Module):
 
         if self.smooth:
             one_hot_key = torch.clamp(
-                one_hot_key, self.smooth, 1.0 - self.smooth)
+                one_hot_key, self.smooth/(self.num_class-1), 1.0 - self.smooth)
         pt = (one_hot_key * logit).sum(1) + epsilon
         logpt = pt.log()
 
