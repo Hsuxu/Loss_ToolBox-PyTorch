@@ -45,8 +45,6 @@ class FocalLoss(nn.Module):
                 raise ValueError('smooth value should be in [0,1]')
 
     def forward(self, logit, target):
-              
-        # logit = F.softmax(input, dim=1)
 
         if logit.dim() > 2:
             # N,C,d1,d2 -> N,C,m (m=d1*d2*...)
@@ -55,14 +53,10 @@ class FocalLoss(nn.Module):
             logit = logit.view(-1, logit.size(-1))
         target = target.view(-1, 1)
 
-        # N = input.size(0)
-        # alpha = torch.ones(N, self.num_class)
-        # alpha = alpha * (1 - self.alpha)
-        # alpha = alpha.scatter_(1, target.long(), self.alpha)
         epsilon = 1e-10
         alpha = self.alpha
-        if alpha.device != input.device:
-            alpha = alpha.to(input.device)
+        if alpha.device != logit.device:
+            alpha = alpha.to(logit.device)
 
         idx = target.cpu().long()
 
