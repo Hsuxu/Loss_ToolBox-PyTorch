@@ -32,6 +32,7 @@ def test_focal():
         target = torch.rand(3, 32, 32).random_(num_class).cuda()
         target = target.long().cuda()
         output = model2d(input)
+        output = F.softmax(output,dim=1)
         loss = FL(output, target)
         print(loss.item())
 
