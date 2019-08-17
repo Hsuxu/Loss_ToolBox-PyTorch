@@ -73,8 +73,8 @@ class FocalLoss(nn.Module):
 
         gamma = self.gamma
 
-        alpha = alpha[idx]
-        loss = -1 * alpha * torch.pow((1 - pt), gamma) * logpt
+        alpha_class = alpha[idx]
+        loss = -1 * alpha_class * torch.pow((1 - pt), gamma) * logpt
 
         if self.size_average:
             loss = loss.mean()

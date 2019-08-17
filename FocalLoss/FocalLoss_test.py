@@ -6,6 +6,7 @@ import torch.nn.functional as F
 
 from FocalLoss import FocalLoss
 
+
 # os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 def test_focal():
@@ -32,7 +33,7 @@ def test_focal():
         target = torch.rand(3, 32, 32).random_(num_class).cuda()
         target = target.long().cuda()
         output = model2d(input)
-        output = F.softmax(output,dim=1)
+        output = F.softmax(output, dim=1)
         loss = FL(output, target)
         print(loss.item())
 
