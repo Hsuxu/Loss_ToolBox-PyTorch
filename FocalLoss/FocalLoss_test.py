@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from FocalLoss import FocalLoss
+from focalloss import FocalLoss
 
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = '2'
