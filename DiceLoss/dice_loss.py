@@ -126,40 +126,86 @@ class WBCEWithLogitLoss(nn.Module):
         assert reduction in ['none', 'mean', 'sum']
         self.ignore_index = ignore_index
         weight = float(weight)
-        weight = torch.Tensor([weight])
-        self.bce = nn.BCEWithLogitsLoss(weight=weight, reduction=reduction)
+        self.weight = weight
+        self.reduction = reduction
+
+        # self.bce = nn.BCEWithLogitsLoss(weight=weight, reduction=reduction)
 
     def forward(self, output, target):
+        output = torch.sigmoid(output)
+
+        batch_size = output.size(0)
+        output = output.view(batch_size, -1)
+        target = target.view(batch_size, -1)
+
+        # pos_log = torch.log(output)
+        # neg_log = torch.log(1.0 - output)
         if self.ignore_index is not None:
             valid_mask = (target != self.ignore_index).float()
             output = output.mul(valid_mask)  # can not use inplace for bp
             target = target.float().mul(valid_mask)
-        loss = self.bce(output, target)
+            # pos_log = pos_log.mul(valid_mask)
+            # neg_log = neg_log.mul(valid_mask)
+
+        # avoid `nan` loss
+        output = torch.clamp(output, min=1e-8, max=1.0 - 1e-8)
+
+        # loss = self.bce(output, target)
+        loss = -self.weight * target.mul(output) - ((1.0 - target).mul(1.0 - output))
+        if self.reduction == 'mean':
+            loss = torch.mean(loss)
+        elif self.reduction == 'sum':
+            loss = torch.sum(loss)
+        elif self.reduction == 'none':
+            loss = loss
+        else:
+            raise NotImplementedError
         return loss
 
-class WBCEWithLogitLoss(nn.Module):
-    def __init__(self, weight=1.0, ignore_index=None, reduction='mean'):
+
+class WBCE_DiceLoss(nn.Module):
+    def __init__(self, alpha=1.0, weight=1.0, ignore_index=None, reduction='mean'):
         """
-        Weight Binary Cross Entropy
+        combination of Weight Binary Cross Entropy and Binary Dice Loss
         Args:
-            @param weight: positive sample weight
-        Shapes：
-            output: A tensor of shape [N, 1,(d,), h, w] without sigmoid activation function applied
+            @param ignore_index: Specifies a target value that is ignored and does not contribute to the input gradient
+            @param reduction: Specifies the reduction to apply to the output: 'none' | 'mean' | 'sum'
+            @param alpha: weight between WBCE('Weight Binary Cross Entropy') and binary dice, apply on WBCE
+        Shapes:
+            output: A tensor of shape [N, *] without sigmoid activation function applied
             target: A tensor of shape same with output
         """
-        super(WBCEWithLogitLoss, self).__init__()
+        super(WBCE_DiceLoss, self).__init__()
         assert reduction in ['none', 'mean', 'sum']
+        assert (alpha >= 0 and alpha <= 1), '`alpha` should in [0,1]'
+        self.alpha = alpha
         self.ignore_index = ignore_index
-        weight = float(weight)
-        weight = torch.Tensor([weight])
-        self.bce = nn.BCEWithLogitsLoss(weight=weight, reduction=reduction)
+        self.reduction = reduction
+        self.dice = BinaryDiceLoss(ignore_index=ignore_index, reduction=reduction)
+        self.wbce = WBCEWithLogitLoss(weight=weight, ignore_index=ignore_index, reduction=reduction)
+        self.dice_loss = None
+        self.wbce_loss = None
 
     def forward(self, output, target):
-        if self.ignore_index is not None:
-            valid_mask = (target != self.ignore_index).float()
-            output = output.mul(valid_mask)  # can not use inplace for bp
-            target = target.float().mul(valid_mask)
-        loss = self.bce(output, target)
+        self.dice_loss = self.dice(output, target)
+        self.wbce_loss = self.wbce(output, target)
+        loss = self.alpha * self.wbce_loss + self.dice_loss
+
+        # if self.ignore_index is not None:
+        #     mask = (target != self.ignore_index).float()
+        #     output = output.mul(mask)  # can not use inplace for bp
+        #     target = target.float().mul(mask)
+        # bce_loss = self.bce(output, target)
+        # loss = self.alpha * bce_loss + (1.0 - self.alpha) * dice_loss
+        #
+        # if self.reduction == 'mean':
+        #     return loss.mean()
+        # elif self.reduction == 'sum':
+        #     return loss.sum()
+        # elif self.reduction == 'none':
+        #     return loss
+        # else:
+        #     raise Exception('Unexpected reduction {}'.format(self.reduction))
         return loss
 
 
