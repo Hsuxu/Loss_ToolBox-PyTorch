@@ -148,10 +148,11 @@ class WBCEWithLogitLoss(nn.Module):
             # neg_log = neg_log.mul(valid_mask)
 
         # avoid `nan` loss
-        output = torch.clamp(output, min=1e-8, max=1.0 - 1e-8)
-
+        eps=1e-6
+        output = torch.clamp(output, min=eps, max=1.0 - eps)
+        target = torch.clamp(target, min=eps, max=1.0 - eps)
         # loss = self.bce(output, target)
-        loss = -self.weight * target.mul(output) - ((1.0 - target).mul(1.0 - output))
+        loss = -self.weight * target.mul(torch.log(output)) - ((1.0 - target).mul(torch.log(1.0 - output)))
         if self.reduction == 'mean':
             loss = torch.mean(loss)
         elif self.reduction == 'sum':
