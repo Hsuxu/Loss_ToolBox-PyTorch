@@ -129,8 +129,6 @@ class WBCEWithLogitLoss(nn.Module):
         self.weight = weight
         self.reduction = reduction
 
-        # self.bce = nn.BCEWithLogitsLoss(weight=weight, reduction=reduction)
-
     def forward(self, output, target):
         assert output.shape[0] == target.shape[0], "output & target batch size don't match"
 
