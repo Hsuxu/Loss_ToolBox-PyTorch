@@ -23,7 +23,6 @@ def make_one_hot(input, num_classes=None):
     shape = tuple(shape)
     result = torch.zeros(shape)
     result = result.scatter_(1, input.cpu(), 1)
-
     return result
 
 
