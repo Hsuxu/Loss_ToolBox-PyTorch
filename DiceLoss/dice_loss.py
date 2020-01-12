@@ -133,25 +133,23 @@ class WBCEWithLogitLoss(nn.Module):
         # self.bce = nn.BCEWithLogitsLoss(weight=weight, reduction=reduction)
 
     def forward(self, output, target):
-        output = torch.sigmoid(output)
+        assert output.shape[0] == target.shape[0], "output & target batch size don't match"
+
+        if self.ignore_index is not None:
+            valid_mask = (target != self.ignore_index).float()
+            output = output.mul(valid_mask)  # can not use inplace for bp
+            target = target.float().mul(valid_mask)
 
         batch_size = output.size(0)
         output = output.view(batch_size, -1)
         target = target.view(batch_size, -1)
 
-        # pos_log = torch.log(output)
-        # neg_log = torch.log(1.0 - output)
-        if self.ignore_index is not None:
-            valid_mask = (target != self.ignore_index).float()
-            output = output.mul(valid_mask)  # can not use inplace for bp
-            target = target.float().mul(valid_mask)
-            # pos_log = pos_log.mul(valid_mask)
-            # neg_log = neg_log.mul(valid_mask)
-
+        output = torch.sigmoid(output)
         # avoid `nan` loss
-        eps=1e-6
+        eps = 1e-6
         output = torch.clamp(output, min=eps, max=1.0 - eps)
         target = torch.clamp(target, min=eps, max=1.0 - eps)
+
         # loss = self.bce(output, target)
         loss = -self.weight * target.mul(torch.log(output)) - ((1.0 - target).mul(torch.log(1.0 - output)))
         if self.reduction == 'mean':
