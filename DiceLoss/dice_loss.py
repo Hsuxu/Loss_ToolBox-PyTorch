@@ -112,6 +112,7 @@ class DiceLoss(nn.Module):
         loss = total_loss / (target.size(1) - len(self.ignore_index))
         return loss
 
+
 class WBCEWithLogitLoss(nn.Module):
     def __init__(self, weight=1.0, ignore_index=None, reduction='mean'):
         """
@@ -178,11 +179,11 @@ class WBCE_DiceLoss(nn.Module):
         """
         super(WBCE_DiceLoss, self).__init__()
         assert reduction in ['none', 'mean', 'sum']
-        assert (alpha >= 0 and alpha <= 1), '`alpha` should in [0,1]'
+        assert 0 <= alpha <= 1, '`alpha` should in [0,1]'
         self.alpha = alpha
         self.ignore_index = ignore_index
         self.reduction = reduction
-        self.dice = BinaryDiceLoss(ignore_index=ignore_index, reduction=reduction)
+        self.dice = BinaryDiceLoss(ignore_index=ignore_index, reduction=reduction, general=True)
         self.wbce = WBCEWithLogitLoss(weight=weight, ignore_index=ignore_index, reduction=reduction)
         self.dice_loss = None
         self.wbce_loss = None
@@ -191,22 +192,6 @@ class WBCE_DiceLoss(nn.Module):
         self.dice_loss = self.dice(output, target)
         self.wbce_loss = self.wbce(output, target)
         loss = self.alpha * self.wbce_loss + self.dice_loss
-
-        # if self.ignore_index is not None:
-        #     mask = (target != self.ignore_index).float()
-        #     output = output.mul(mask)  # can not use inplace for bp
-        #     target = target.float().mul(mask)
-        # bce_loss = self.bce(output, target)
-        # loss = self.alpha * bce_loss + (1.0 - self.alpha) * dice_loss
-        #
-        # if self.reduction == 'mean':
-        #     return loss.mean()
-        # elif self.reduction == 'sum':
-        #     return loss.sum()
-        # elif self.reduction == 'none':
-        #     return loss
-        # else:
-        #     raise Exception('Unexpected reduction {}'.format(self.reduction))
         return loss
 
 
