@@ -113,21 +113,25 @@ class DiceLoss(nn.Module):
 
 
 class WBCEWithLogitLoss(nn.Module):
-    def __init__(self, weight=1.0, ignore_index=None, reduction='mean'):
-        """
-        Weight Binary Cross Entropy
-        Args:
+    """
+    Weighted Binary Cross Entropy.
+    `WBCE(p,t)=-β*t*log(p)-(1-t)*log(1-p)`
+    To decrease the number of false negatives, set β>1. 
+    To decrease the number of false positives, set β<1. 
+    Args:
             @param weight: positive sample weight
         Shapes：
             output: A tensor of shape [N, 1,(d,), h, w] without sigmoid activation function applied
             target: A tensor of shape same with output
-        """
+    """
+    def __init__(self, weight=1.0, ignore_index=None, reduction='mean'):
         super(WBCEWithLogitLoss, self).__init__()
         assert reduction in ['none', 'mean', 'sum']
         self.ignore_index = ignore_index
         weight = float(weight)
         self.weight = weight
         self.reduction = reduction
+        self.smooth=0.01
 
     def forward(self, output, target):
         assert output.shape[0] == target.shape[0], "output & target batch size don't match"
@@ -145,7 +149,8 @@ class WBCEWithLogitLoss(nn.Module):
         # avoid `nan` loss
         eps = 1e-6
         output = torch.clamp(output, min=eps, max=1.0 - eps)
-        target = torch.clamp(target, min=eps, max=1.0 - eps)
+        # soft label
+        target = torch.clamp(target, min=self.smooth, max=1.0 - self.smooth)
 
         # loss = self.bce(output, target)
         loss = -self.weight * target.mul(torch.log(output)) - ((1.0 - target).mul(torch.log(1.0 - output)))
