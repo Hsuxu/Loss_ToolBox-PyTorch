@@ -22,7 +22,7 @@ def make_one_hot(input, num_classes=None):
     shape[1] = num_classes
     shape = tuple(shape)
     result = torch.zeros(shape)
-    result = result.scatter_(1, input.cpu(), 1)
+    result = result.scatter_(1, input.cpu().long(), 1)
     return result
 
 
@@ -46,9 +46,10 @@ class BinaryDiceLoss(nn.Module):
         self.ignore_index = ignore_index
         self.reduction = reduction
 
-    def forward(self, output, target):
+    def forward(self, output, target, use_sigmoid=True):
         assert output.shape[0] == target.shape[0], "output & target batch size don't match"
-        output = torch.sigmoid(output)
+        if use_sigmoid:
+            output = torch.sigmoid(output)
 
         if self.ignore_index is not None:
             validmask = (target != self.ignore_index).float()
@@ -85,15 +86,18 @@ class DiceLoss(nn.Module):
         same as BinaryDiceLoss
     """
 
-    def __init__(self, weight=None, ignore_index=[], **kwargs):
+    def __init__(self, weight=None, ignore_index=None, **kwargs):
         super(DiceLoss, self).__init__()
         self.kwargs = kwargs
         self.weight = weight
-        if isinstance(ignore_index, int):
-            self.ignore_index = [ignore_index]
+        if isinstance(ignore_index, (int, float)):
+            self.ignore_index = [int(ignore_index)]
         elif ignore_index is None:
             self.ignore_index = []
-        self.ignore_index = ignore_index
+        elif isinstance(ignore_index, (list, tuple)):
+            self.ignore_index = ignore_index
+        else:
+            raise TypeError("Expect 'int|float|list|tuple', while get '{}'".format(type(ignore_index)))
 
     def forward(self, output, target):
         assert output.shape == target.shape, 'output & target shape do not match'
@@ -102,7 +106,7 @@ class DiceLoss(nn.Module):
         output = F.softmax(output, dim=1)
         for i in range(target.shape[1]):
             if i not in self.ignore_index:
-                dice_loss = dice(output[:, i], target[:, i])
+                dice_loss = dice(output[:, i], target[:, i], use_sigmoid=False)
                 if self.weight is not None:
                     assert self.weight.shape[0] == target.shape[1], \
                         'Expect weight shape [{}], get[{}]'.format(target.shape[1], self.weight.shape[0])
@@ -124,6 +128,7 @@ class WBCEWithLogitLoss(nn.Module):
             output: A tensor of shape [N, 1,(d,), h, w] without sigmoid activation function applied
             target: A tensor of shape same with output
     """
+
     def __init__(self, weight=1.0, ignore_index=None, reduction='mean'):
         super(WBCEWithLogitLoss, self).__init__()
         assert reduction in ['none', 'mean', 'sum']
@@ -131,7 +136,7 @@ class WBCEWithLogitLoss(nn.Module):
         weight = float(weight)
         self.weight = weight
         self.reduction = reduction
-        self.smooth=0.01
+        self.smooth = 0.01
 
     def forward(self, output, target):
         assert output.shape[0] == target.shape[0], "output & target batch size don't match"
@@ -196,10 +201,11 @@ class WBCE_DiceLoss(nn.Module):
 
 
 def test():
-    input = torch.rand((1, 1, 32, 32, 32))
-    model = nn.Conv3d(1, 1, 3, padding=1)
-    target = torch.randint(0, 3, (1, 1, 32, 32, 32)).float()
-    criterion = BCE_DiceLoss(ignore_index=2, reduction='none')
+    input = torch.rand((3, 1, 32, 32, 32))
+    model = nn.Conv3d(1, 4, 3, padding=1)
+    target = torch.randint(0, 4, (3, 1, 32, 32, 32)).float()
+    target = make_one_hot(target, num_classes=4)
+    criterion = DiceLoss(ignore_index=[2,3], reduction='mean')
     loss = criterion(model(input), target)
     loss.backward()
     print(loss.item())
