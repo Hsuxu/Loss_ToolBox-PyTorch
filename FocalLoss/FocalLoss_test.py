@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from focalloss import FocalLoss
+from focal_loss import FocalLoss_Ori
 
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = '2'
@@ -20,7 +20,8 @@ def test_focal():
     N = 100
     # model1d = torch.nn.Linear(nodes, num_class).cuda()
     model2d = torch.nn.Conv2d(16, num_class, 3, padding=1).cuda()
-    FL = FocalLoss(num_class=num_class, alpha=0.25, gamma=2.0, balance_index=2)
+    FL = FocalLoss_Ori(num_class=num_class, alpha=0.25,
+                       gamma=2.0, balance_index=2)
     for i in range(10):
         # input = torch.rand(N, nodes) * torch.randint(1, 100, (N, nodes)).float()
         # input = input.cuda()
