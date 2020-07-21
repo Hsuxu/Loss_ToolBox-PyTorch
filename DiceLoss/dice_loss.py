@@ -40,11 +40,14 @@ class BinaryDiceLoss(nn.Module):
         Exception if unexpected reduction
     """
 
-    def __init__(self, ignore_index=None, reduction='mean'):
+    def __init__(self, ignore_index=None, reduction='mean',**kwargs):
         super(BinaryDiceLoss, self).__init__()
-        self.smooth = 1
+        self.smooth = 1   # suggest set a large number when TP is large
         self.ignore_index = ignore_index
         self.reduction = reduction
+        self.batch_dice = False # treat a large map when True
+        if 'batch_loss' in kwargs.keys():
+            self.batch_dice = kwargs['batch_loss']
 
     def forward(self, output, target, use_sigmoid=True):
         assert output.shape[0] == target.shape[0], "output & target batch size don't match"
@@ -56,8 +59,12 @@ class BinaryDiceLoss(nn.Module):
             output = output.mul(validmask)  # can not use inplace for bp
             target = target.float().mul(validmask)
 
-        output = output.contiguous().view(output.shape[0], -1)
-        target = target.contiguous().view(target.shape[0], -1).float()
+        dim0= output.shape[0]
+        if self.batch_dice:
+            dim0 = 1
+
+        output = output.contiguous().view(dim0, -1)
+        target = target.contiguous().view(dim0, -1).float()
 
         num = 2 * torch.sum(torch.mul(output, target), dim=1) + self.smooth
         den = torch.sum(output.pow(2) + target.pow(2), dim=1) + self.smooth
