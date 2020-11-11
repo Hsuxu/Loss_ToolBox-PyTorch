@@ -4,10 +4,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from focal_loss import FocalLoss_Ori
+from focal_loss import FocalLoss_Ori,BinaryFocalLoss 
 
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+
+def test_BFL():
+    output = 40*(torch.randint(0,2,(1,1,32,32,32))-0.5)
+    target = torch.zeros_like(output)
+    target[output>0] = 1
+    # target = torch.randint(0,2,(1,1,32,32,32))
+    criterion = BinaryFocalLoss()   
+    loss = criterion(output,target)
+    print(loss.item())
 
 def test_focal():
     num_class = 5
@@ -40,4 +49,4 @@ def test_focal():
 
 
 if __name__ == '__main__':
-    test_focal()
+    test_BFL()
