@@ -18,51 +18,51 @@ class BinaryFocalLoss(nn.Module):
         balance_index: (int) balance class index, should be specific when alpha is float
     """
 
-    def __init__(self, alpha=[1.0, 1.0], gamma=2, ignore_index=None, reduction='mean'):
+    def __init__(self, alpha=3, gamma=2, ignore_index=None, reduction='mean',**kwargs):
         super(BinaryFocalLoss, self).__init__()
-        if alpha is None:
-            alpha = [0.25, 0.75]
         self.alpha = alpha
         self.gamma = gamma
-        self.smooth = 1e-6
+        self.smooth = 1e-6 # set '1e-4' when train with FP16
         self.ignore_index = ignore_index
         self.reduction = reduction
 
         assert self.reduction in ['none', 'mean', 'sum']
 
-        if self.alpha is None:
-            self.alpha = torch.ones(2)
-        elif isinstance(self.alpha, (list, np.ndarray)):
-            self.alpha = np.asarray(self.alpha)
-            self.alpha = np.reshape(self.alpha, (2))
-            assert self.alpha.shape[0] == 2, \
-                'the `alpha` shape is not match the number of class'
-        elif isinstance(self.alpha, (float, int)):
-            self.alpha = np.asarray([self.alpha, 1.0 - self.alpha], dtype=np.float).view(2)
+        # if self.alpha is None:
+        #     self.alpha = torch.ones(2)
+        # elif isinstance(self.alpha, (list, np.ndarray)):
+        #     self.alpha = np.asarray(self.alpha)
+        #     self.alpha = np.reshape(self.alpha, (2))
+        #     assert self.alpha.shape[0] == 2, \
+        #         'the `alpha` shape is not match the number of class'
+        # elif isinstance(self.alpha, (float, int)):
+        #     self.alpha = np.asarray([self.alpha, 1.0 - self.alpha], dtype=np.float).view(2)
 
-        else:
-            raise TypeError('{} not supported'.format(type(self.alpha)))
+        # else:
+        #     raise TypeError('{} not supported'.format(type(self.alpha)))
 
     def forward(self, output, target):
         prob = torch.sigmoid(output)
         prob = torch.clamp(prob, self.smooth, 1.0 - self.smooth)
 
+        valid_mask = None
+        if self.ignore_index is not None:
+            valid_mask = (target != self.ignore_index).float()
+
         pos_mask = (target == 1).float()
         neg_mask = (target == 0).float()
+        if valid_mask is not None:
+            pos_mask = pos_mask * valid_mask
+            neg_mask = neg_mask * valid_mask
 
-        pos_loss = -self.alpha[0] * torch.pow(torch.sub(1.0, prob), self.gamma) * torch.log(prob) * pos_mask
-        neg_loss = -self.alpha[1] * torch.pow(prob, self.gamma) * \
-                   torch.log(torch.sub(1.0, prob)) * neg_mask
+        pos_weight = (pos_mask * torch.pow(1 - prob, self.gamma)).detach()
+        pos_loss = -torch.sum(pos_weight * torch.log(prob)) / (torch.sum(pos_weight) + 1e-4)
+        
+        
+        neg_weight = (neg_mask * torch.pow(prob, self.gamma)).detach()
+        neg_loss = -self.alpha * torch.sum(neg_weight * F.logsigmoid(-logit)) / (torch.sum(neg_weight) + 1e-4)
+        loss = pos_loss + neg_loss
 
-        neg_loss = neg_loss.sum()
-        pos_loss = pos_loss.sum()
-        num_pos = pos_mask.view(pos_mask.size(0), -1).sum()
-        num_neg = neg_mask.view(neg_mask.size(0), -1).sum()
-
-        if num_pos == 0:
-            loss = neg_loss
-        else:
-            loss = pos_loss / num_pos + neg_loss / num_neg
         return loss
 
 

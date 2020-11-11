@@ -42,7 +42,7 @@ class BinaryDiceLoss(nn.Module):
 
     def __init__(self, ignore_index=None, reduction='mean',**kwargs):
         super(BinaryDiceLoss, self).__init__()
-        self.smooth = 1   # suggest set a large number when TP is large
+        self.smooth = 1   # suggest set a large number when target area is large,like '10|100'
         self.ignore_index = ignore_index
         self.reduction = reduction
         self.batch_dice = False # treat a large map when True
@@ -67,7 +67,7 @@ class BinaryDiceLoss(nn.Module):
         target = target.contiguous().view(dim0, -1).float()
 
         num = 2 * torch.sum(torch.mul(output, target), dim=1) + self.smooth
-        den = torch.sum(output.pow(2) + target.pow(2), dim=1) + self.smooth
+        den = torch.sum(output.abs() + target.abs(), dim=1) + self.smooth
 
         loss = 1 - (num / den)
 
