@@ -60,7 +60,7 @@ class BinaryFocalLoss(nn.Module):
         
         
         neg_weight = (neg_mask * torch.pow(prob, self.gamma)).detach()
-        neg_loss = -self.alpha * torch.sum(neg_weight * F.logsigmoid(-logit)) / (torch.sum(neg_weight) + 1e-4)
+        neg_loss = -self.alpha * torch.sum(neg_weight * F.logsigmoid(-output)) / (torch.sum(neg_weight) + 1e-4)
         loss = pos_loss + neg_loss
 
         return loss
@@ -92,13 +92,13 @@ class FocalLoss_Ori(nn.Module):
             assert len(self.alpha) == self.num_class
             self.alpha = torch.Tensor(list(self.alpha))
         elif isinstance(self.alpha, (float,int)):
-            assert 0<self.alpha<1.0, 'alpha should be in `(0,1)`)'
-            assert balance_index >-1
+            assert 0 < self.alpha < 1.0, 'alpha should be in `(0,1)`)'
+            assert balance_index > -1
             alpha = torch.ones((self.num_class))
             alpha *= 1-self.alpha
             alpha[balance_index] = self.alpha
             self.alpha = alpha
-        elif isinstance(self.alpha,torch.Tensor):
+        elif isinstance(self.alpha, torch.Tensor):
             self.alpha = self.alpha
         else:
             raise TypeError('Not support alpha type, expect `int|float|list|tuple|torch.Tensor`')
