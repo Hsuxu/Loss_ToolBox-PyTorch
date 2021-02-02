@@ -38,7 +38,7 @@ class MultiTverskyLoss(nn.Module):
             input_idx = torch.cat((1 - input_idx, input_idx), dim=1)
             target_idx = (targets == idx) * 1
             loss_func = FocalBinaryTverskyLoss(self.alpha, self.beta, self.gamma)
-            loss_idx = loss_func(input_idx, target_idx)
+            loss_idx = loss_func.apply(input_idx, target_idx)
             weight_losses+=loss_idx * weights[idx]
         # loss = torch.Tensor(weight_losses)
         # loss = loss.to(inputs.device)
