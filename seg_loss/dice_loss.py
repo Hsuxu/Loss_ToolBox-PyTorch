@@ -40,12 +40,12 @@ class BinaryDiceLoss(nn.Module):
         Exception if unexpected reduction
     """
 
-    def __init__(self, ignore_index=None, reduction='mean',**kwargs):
+    def __init__(self, ignore_index=None, reduction='mean', **kwargs):
         super(BinaryDiceLoss, self).__init__()
-        self.smooth = 1   # suggest set a large number when target area is large,like '10|100'
+        self.smooth = 1  # suggest set a large number when target area is large,like '10|100'
         self.ignore_index = ignore_index
         self.reduction = reduction
-        self.batch_dice = False # treat a large map when True
+        self.batch_dice = False  # treat a large map when True
         if 'batch_loss' in kwargs.keys():
             self.batch_dice = kwargs['batch_loss']
 
@@ -59,7 +59,7 @@ class BinaryDiceLoss(nn.Module):
             output = output.mul(validmask)  # can not use inplace for bp
             target = target.float().mul(validmask)
 
-        dim0= output.shape[0]
+        dim0 = output.shape[0]
         if self.batch_dice:
             dim0 = 1
 
@@ -212,7 +212,7 @@ def test():
     model = nn.Conv3d(1, 4, 3, padding=1)
     target = torch.randint(0, 4, (3, 1, 32, 32, 32)).float()
     target = make_one_hot(target, num_classes=4)
-    criterion = DiceLoss(ignore_index=[2,3], reduction='mean')
+    criterion = DiceLoss(ignore_index=[2, 3], reduction='mean')
     loss = criterion(model(input), target)
     loss.backward()
     print(loss.item())

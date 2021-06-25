@@ -1,11 +1,9 @@
-import os
 import torch
 
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import optim
 
-from focal_loss import FocalLoss_Ori, BinaryFocalLoss
+from seg_loss.focal_loss import FocalLoss_Ori, BinaryFocalLoss
 
 
 def test_BFL():
@@ -38,7 +36,6 @@ def test_BFL():
 
 
 def test_focal():
-    import numpy as np
     import matplotlib.pyplot as plt
     torch.manual_seed(123)
     num_class = 5

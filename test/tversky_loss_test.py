@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from TverskyLoss.binarytverskyloss import FocalBinaryTverskyLoss
-from TverskyLoss.multitverskyloss import MultiTverskyLoss
+from seg_loss.multitverskyloss import MultiTverskyLoss
 
 
 class ConvNet(nn.Module):
