@@ -3,15 +3,14 @@ import torch
 
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import optim
 
 from focal_loss import FocalLoss_Ori, BinaryFocalLoss
 
 
-# os.environ['CUDA_VISIBLE_DEVICES'] = '2'
-
 def test_BFL():
     import matplotlib.pyplot as plt
-    from torch import optim
+
     torch.manual_seed(123)
     shape = (4, 1, 32, 32, 32)
     datas = 40 * (torch.randint(0, 2, shape) - 0.5)
@@ -39,34 +38,39 @@ def test_BFL():
 
 
 def test_focal():
+    import numpy as np
+    import matplotlib.pyplot as plt
+    torch.manual_seed(123)
     num_class = 5
-    # alpha = np.random.randn(num_class)
-    # input = torch.randn(10, num_class).cuda()
-    # target = torch.LongTensor(10).random_(num_class).cuda()
-    # loss0 = FL(input, target)
-    # print(loss0)
-    nodes = 100
-    N = 100
-    # model1d = torch.nn.Linear(nodes, num_class).cuda()
-    model2d = torch.nn.Conv2d(16, num_class, 3, padding=1).cuda()
-    FL = FocalLoss_Ori(num_class=num_class, alpha=0.25,
-                       gamma=2.0, balance_index=2)
-    for i in range(10):
-        # input = torch.rand(N, nodes) * torch.randint(1, 100, (N, nodes)).float()
-        # input = input.cuda()
-        # target = torch.LongTensor(N).random_(num_class).cuda()
-        # loss0 = FL(model1d(input), target)
-        # print(loss0)
-        # loss0.backward()
+    shape = (4, 1, 32, 32, 32)
+    target_shape = (4, 1, 32, 32, 32)
+    datas = 40 * (torch.rand(shape) - 0.5).cuda()
+    target = torch.randint(0, num_class, size=target_shape).cuda()
+    target[0, 0, 0, 0, :] = 255
+    target = target.long().cuda()
+    FL = FocalLoss_Ori(num_class=num_class, gamma=2.0, ignore_index=255, reduction='mean')
 
-        input = torch.rand(3, 16, 32, 32).cuda()
-        target = torch.rand(3, 32, 32).random_(num_class).cuda()
-        target = target.long().cuda()
-        output = model2d(input)
-        output = F.softmax(output, dim=1)
+    model = nn.Sequential(*[nn.Conv3d(1, 16, kernel_size=3, padding=1, stride=1),
+                            nn.BatchNorm3d(16),
+                            nn.ReLU(),
+                            nn.Conv3d(16, num_class, kernel_size=3, padding=1, stride=1)])
+    model = model.cuda()
+    losses = []
+    optimizer = optim.Adam(params=model.parameters(), lr=0.001)
+
+    for i in range(100):
+        output = model(datas)
         loss = FL(output, target)
-        print(loss.item())
+        losses.append(loss.item())
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        if i % 10 == 0:
+            print(i)
+
+    plt.plot(losses)
+    plt.show()
 
 
 if __name__ == '__main__':
-    test_BFL()
+    test_focal()
