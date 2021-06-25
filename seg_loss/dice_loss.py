@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+from .focal_loss import BinaryFocalLoss
+
 
 def make_one_hot(input, num_classes=None):
     """Convert class index tensor to one hot encoding tensor.
@@ -205,6 +207,19 @@ class WBCE_DiceLoss(nn.Module):
         self.wbce_loss = self.wbce(output, target)
         loss = self.alpha * self.wbce_loss + self.dice_loss
         return loss
+
+
+class Binary_Focal_Dice(nn.Module):
+    def __init__(self, **kwargs):
+        super(Binary_Focal_Dice, self).__init__()
+        self.dice = BinaryDiceLoss(**kwargs)
+        self.focal = BinaryFocalLoss(**kwargs)
+
+    def forward(self, logits, target):
+        dice_loss = self.dice(logits, target)
+        focal_loss = self.focal(logits, target)
+        loss = dice_loss + focal_loss
+        return loss, (dice_loss.detach(), focal_loss.detach())
 
 
 def test():
