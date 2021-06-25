@@ -204,6 +204,7 @@ class WBCE_DiceLoss(nn.Module):
 
     def forward(self, output, target):
         self.dice_loss = self.dice(output, target)
+        self.dice_loss = -torch.log(1 - self.dice_loss)
         self.wbce_loss = self.wbce(output, target)
         loss = self.alpha * self.wbce_loss + self.dice_loss
         return loss
@@ -217,6 +218,7 @@ class Binary_Focal_Dice(nn.Module):
 
     def forward(self, logits, target):
         dice_loss = self.dice(logits, target)
+        dice_loss = -torch.log(1 - dice_loss)
         focal_loss = self.focal(logits, target)
         loss = dice_loss + focal_loss
         return loss, (dice_loss.detach(), focal_loss.detach())
