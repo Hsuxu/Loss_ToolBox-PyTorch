@@ -17,11 +17,11 @@ class BinaryFocalLoss(nn.Module):
         balance_index: (int) balance class index, should be specific when alpha is float
     """
 
-    def __init__(self, alpha=3, gamma=2, ignore_index=None, reduction='mean',**kwargs):
+    def __init__(self, alpha=3, gamma=2, ignore_index=None, reduction='mean', **kwargs):
         super(BinaryFocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
-        self.smooth = 1e-6 # set '1e-4' when train with FP16
+        self.smooth = 1e-6  # set '1e-4' when train with FP16
         self.ignore_index = ignore_index
         self.reduction = reduction
 
@@ -55,15 +55,13 @@ class BinaryFocalLoss(nn.Module):
             neg_mask = neg_mask * valid_mask
 
         pos_weight = (pos_mask * torch.pow(1 - prob, self.gamma)).detach()
-        pos_loss = -torch.sum(pos_weight * torch.log(prob)) / (torch.sum(pos_weight) + 1e-4)
-        
-        
+        pos_loss = -pos_weight * torch.log(prob) #/ (torch.sum(pos_weight) + 1e-4)
+
         neg_weight = (neg_mask * torch.pow(prob, self.gamma)).detach()
-        neg_loss = -self.alpha * torch.sum(neg_weight * F.logsigmoid(-output)) / (torch.sum(neg_weight) + 1e-4)
+        neg_loss = -self.alpha * neg_weight * F.logsigmoid(-output) #/ (torch.sum(neg_weight) + 1e-4)
         loss = pos_loss + neg_loss
-
+        loss = loss.mean()
         return loss
-
 
 
 class FocalLoss_Ori(nn.Module):
@@ -79,7 +77,7 @@ class FocalLoss_Ori(nn.Module):
     :param size_average: (bool, optional) By default, the losses are averaged over each loss element in the batch.
     """
 
-    def __init__(self, num_class, alpha=[0.25,0.75], gamma=2, balance_index=-1, size_average=True):
+    def __init__(self, num_class, alpha=[0.25, 0.75], gamma=2, balance_index=-1, size_average=True):
         super(FocalLoss_Ori, self).__init__()
         self.num_class = num_class
         self.alpha = alpha
@@ -90,11 +88,11 @@ class FocalLoss_Ori(nn.Module):
         if isinstance(self.alpha, (list, tuple)):
             assert len(self.alpha) == self.num_class
             self.alpha = torch.Tensor(list(self.alpha))
-        elif isinstance(self.alpha, (float,int)):
+        elif isinstance(self.alpha, (float, int)):
             assert 0 < self.alpha < 1.0, 'alpha should be in `(0,1)`)'
             assert balance_index > -1
             alpha = torch.ones((self.num_class))
-            alpha *= 1-self.alpha
+            alpha *= 1 - self.alpha
             alpha[balance_index] = self.alpha
             self.alpha = alpha
         elif isinstance(self.alpha, torch.Tensor):
@@ -107,9 +105,9 @@ class FocalLoss_Ori(nn.Module):
         if logit.dim() > 2:
             # N,C,d1,d2 -> N,C,m (m=d1*d2*...)
             logit = logit.view(logit.size(0), logit.size(1), -1)
-            logit = logit.transpose(1, 2).contiguous() # [N,C,d1*d2..] -> [N,d1*d2..,C]
-            logit = logit.view(-1, logit.size(-1)) # [N,d1*d2..,C]-> [N*d1*d2..,C]
-        target = target.view(-1, 1) # [N,d1,d2,...]->[N*d1*d2*...,1]
+            logit = logit.transpose(1, 2).contiguous()  # [N,C,d1*d2..] -> [N,d1*d2..,C]
+            logit = logit.view(-1, logit.size(-1))  # [N,d1*d2..,C]-> [N*d1*d2..,C]
+        target = target.view(-1, 1)  # [N,d1,d2,...]->[N*d1*d2*...,1]
 
         # -----------legacy way------------
         #  idx = target.cpu().long()
@@ -120,13 +118,13 @@ class FocalLoss_Ori(nn.Module):
         # pt = (one_hot_key * logit).sum(1) + epsilon
 
         # ----------memory saving way--------
-        pt = logit.gather(1, target).view(-1) + self.eps # avoid apply
+        pt = logit.gather(1, target).view(-1) + self.eps  # avoid apply
         logpt = pt.log()
 
         if self.alpha.device != logpt.device:
             alpha = self.alpha.to(logpt.device)
-            alpha_class = alpha.gather(0,target.view(-1))
-            logpt = alpha_class*logpt
+            alpha_class = alpha.gather(0, target.view(-1))
+            logpt = alpha_class * logpt
         loss = -1 * torch.pow(torch.sub(1.0, pt), self.gamma) * logpt
 
         if self.size_average:
@@ -134,5 +132,3 @@ class FocalLoss_Ori(nn.Module):
         else:
             loss = loss.sum()
         return loss
-
-    

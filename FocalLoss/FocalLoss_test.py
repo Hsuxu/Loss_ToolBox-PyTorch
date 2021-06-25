@@ -4,19 +4,39 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from focal_loss import FocalLoss_Ori,BinaryFocalLoss 
+from focal_loss import FocalLoss_Ori, BinaryFocalLoss
 
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 def test_BFL():
-    output = 40*(torch.randint(0,2,(1,1,32,32,32))-0.5)
-    target = torch.zeros_like(output)
-    target[output>0] = 1
-    # target = torch.randint(0,2,(1,1,32,32,32))
-    criterion = BinaryFocalLoss()   
-    loss = criterion(output,target)
-    print(loss.item())
+    import matplotlib.pyplot as plt
+    from torch import optim
+    torch.manual_seed(123)
+    shape = (4, 1, 32, 32, 32)
+    datas = 40 * (torch.randint(0, 2, shape) - 0.5)
+    target = torch.zeros_like(datas) + torch.randint(0, 2, size=shape)
+    model = nn.Sequential(*[nn.Conv3d(1, 16, kernel_size=3, padding=1, stride=1),
+                            nn.BatchNorm3d(16),
+                            nn.ReLU(),
+                            nn.Conv3d(16, 1, kernel_size=3, padding=1, stride=1)])
+
+    criterion = BinaryFocalLoss()
+    losses = []
+    optimizer = optim.Adam(params=model.parameters(), lr=0.001)
+    for step in range(100):
+        out = model(datas)
+        loss = criterion(out, target)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        losses.append(loss.item())
+        if step % 10 == 0:
+            print(step)
+
+    plt.plot(losses)
+    plt.show()
+
 
 def test_focal():
     num_class = 5
