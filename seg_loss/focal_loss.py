@@ -79,9 +79,6 @@ class FocalLoss_Ori(nn.Module):
     """
 
     def __init__(self, num_class, alpha=None, gamma=2, ignore_index=None, reduction='mean'):
-        """
-
-        """
         super(FocalLoss_Ori, self).__init__()
         self.num_class = num_class
         self.gamma = gamma
